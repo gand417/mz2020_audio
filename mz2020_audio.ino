@@ -13,7 +13,6 @@ short sampleBuffer[256];
 // Number of samples read
 volatile int samplesRead;
 
-// This routine runs once upon power on
 void setup() {
   // Initialize serial monitor for debugging
   Serial.begin(9600);
@@ -21,8 +20,8 @@ void setup() {
   // Configure the data receive callback
   PDM.onReceive(onPDMdata);
 
-  // Optionally set the gain, defaults to 20
-  // PDM.setGain(30);
+  // Set the gain, defaults to 20
+  PDM.setGain(30);
 
   // Initialize PDM with:
   // - one channel (mono mode)
@@ -35,36 +34,53 @@ void setup() {
   // Inizialize Neopixel LED strip
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
-  strip.setBrightness(255);
+  strip.setBrightness(7);
 }
 
 
 void loop() {
   // Wait for samples to be read
   if (samplesRead) {
-
-    // Print samples to the serial monitor or plotter
-    for (int i = 1; i < samplesRead; i++) {
-      Serial.println(sampleBuffer[i]);
+    
+    // Iterate over all samples in the buffer
+    for (int i = 0; i < samplesRead; i++) {
       
-      // Don't fully understand
-      int brightness = abs(sampleBuffer[i]);
-      for(int i=0; i<LED_COUNT; i++) { // For each pixel...
-        strip.setPixelColor(i, strip.Color(brightness, brightness, brightness));
-      }
-      strip.show();   // Send the updated pixel colors to the hardware.
-    }
+//      int volume = abs(sampleBuffer[i]);
+      // Poor man's lowpass filter: Take the average of the current and next 4 samples?
+      int volume = (abs(sampleBuffer[i])+abs(sampleBuffer[i+1])+abs(sampleBuffer[i+2])+abs(sampleBuffer[i+3])+abs(sampleBuffer[i+4]))/5;
+      Serial.print("Sample: ");
+      Serial.println(sampleBuffer[i]);
 
-    // Clear the read count
+      // Cancel background noise?
+      if (volume < 32) {
+        volume = 0;
+      }
+      Serial.print("Volume: ");
+      Serial.println(volume);
+      
+      // Map brightness level to volume
+      int brightness = map(volume,0,255,0,255);
+      Serial.print("Brightness: ");
+      Serial.println(brightness);
+      
+      // Set all pixels accordingly
+      for(int i=0; i<LED_COUNT; i++) { 
+        strip.setPixelColor(i, strip.Color((brightness/4), brightness, (brightness/2)));
+      }
+      // Send the updated pixel colors to the hardware.
+      strip.show(); 
+    }
+    
+    // Clear sample buffer read count
     samplesRead = 0;
   }
 }
 
 void onPDMdata() {
-  // query the number of bytes available
+  // Query the number of bytes available
   int bytesAvailable = PDM.available();
 
-  // read into the sample buffer
+  // Read into the sample buffer
   PDM.read(sampleBuffer, bytesAvailable);
 
   // 16-bit, 2 bytes per sample
