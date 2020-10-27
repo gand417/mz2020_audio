@@ -5,6 +5,25 @@
 #define LED_PIN 4
 #define LED_COUNT 11
 
+// LED ring color config
+// Set colour percentage in parts of one
+// e.g. 4 = 1/4, 1 = 1/1 etc
+
+// Pink <3
+#define LED_R 1
+#define LED_G 6
+#define LED_B 1.3
+
+//// Fresh green
+//#define LED_R 4
+//#define LED_G 1
+//#define LED_B 2
+
+//// Plain white
+//#define LED_R 1
+//#define LED_G 1
+//#define LED_B 1
+
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // Buffer to read samples into, each sample is 16-bits
@@ -34,7 +53,7 @@ void setup() {
   // Inizialize Neopixel LED strip
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
-  strip.setBrightness(7);
+  strip.setBrightness(23);
 }
 
 
@@ -44,34 +63,23 @@ void loop() {
     
     // Iterate over all samples in the buffer
     for (int i = 0; i < samplesRead; i++) {
-      
-//      int volume = abs(sampleBuffer[i]);
-      // Poor man's lowpass filter: Take the average of the current and next 4 samples?
-      int volume = (abs(sampleBuffer[i])+abs(sampleBuffer[i+1])+abs(sampleBuffer[i+2])+abs(sampleBuffer[i+3])+abs(sampleBuffer[i+4]))/5;
-      Serial.print("Sample: ");
-      Serial.println(sampleBuffer[i]);
+      int volume = abs(sampleBuffer[i]);
 
-      // Cancel background noise?
+      // Cancel background noise
       if (volume < 32) {
         volume = 0;
       }
-      Serial.print("Volume: ");
-      Serial.println(volume);
-      
-      // Map brightness level to volume
-      int brightness = map(volume,0,255,0,255);
-      Serial.print("Brightness: ");
-      Serial.println(brightness);
-      
+
       // Set all pixels accordingly
       for(int i=0; i<LED_COUNT; i++) { 
-        strip.setPixelColor(i, strip.Color((brightness/4), brightness, (brightness/2)));
+        strip.setPixelColor(i, strip.Color((volume/LED_R), volume/LED_G, (volume/LED_B)));
       }
-      // Send the updated pixel colors to the hardware.
+      
+      // Send the updated pixel colors to the LED strip
       strip.show(); 
     }
     
-    // Clear sample buffer read count
+    // Clear audio sample buffer read count
     samplesRead = 0;
   }
 }
